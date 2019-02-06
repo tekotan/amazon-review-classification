@@ -11,7 +11,7 @@ import ipdb
 import os
 import shutil
 
-TOTAL_EXAMPLES = 100000
+TOTAL_EXAMPLES = 1000  # 300000
 at_a_time = 1000
 train_num = 0
 val_num = 0

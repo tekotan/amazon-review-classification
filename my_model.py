@@ -24,7 +24,8 @@ class DataClass(object):
         self.data_path = "./complete.json.gz"
         self.data_split = data_split
         print("Loading Vectors")
-        self.vec_model = FastText.load_fasttext_format('cc.en.300.bin').wv
+        self.vec_model = FastText.load_fasttext_format(
+            'vectors/cc.en.300.bin/cc.en.300.bin').wv
         print("Completed Loading Vectors")
 
     def replace_by_word_embeddings(self, row):
@@ -131,7 +132,8 @@ class BaseModel(object):
         self.val_dataset_total = self.val_dataset_total.map(extract_fn)
         self.val_dataset_total = self.val_dataset_total.repeat(
             (split[0] // split[1]) * epochs)
-        # self.val_dataset_total = self.val_dataset_total.batch(batch_size)
+        self.val_dataset_total = self.val_dataset_total.batch(
+            len(os.listdir("val_data/")))
 
         self.test_dataset = tf.data.TFRecordDataset(
             [f"test_data/test_{i}.tfrecord" for i in range(split[2])])
@@ -300,7 +302,7 @@ class RunModel(object):
         self.params = params
         if predict:
             self.vec_model = FastText.load_fasttext_format(
-                'cc.en.300.bin').wv
+                'vectors/cc.en.300.bin/cc.en.300.bin').wv
             # self.vec_model = []
             self.test_val = tf.placeholder(
                 tf.float32, shape=(None, max_word_count, 300))
@@ -336,7 +338,6 @@ class RunModel(object):
             val_handle = sess.run(val_iterator.string_handle())
             val_handle_total = sess.run(val_iterator_total.string_handle())
             test_handle = sess.run(test_iterator.string_handle())
-            # ipdb.set_trace()
             for epoch in range(self.params.num_epochs):
                 for iteration in tqdm(range(len(os.listdir("train_data/")) // self.params.batch_size + 1)):
                     try:
@@ -358,6 +359,7 @@ class RunModel(object):
                                 f"Saved Checkpoint at iteration {iteration*epoch} and path {save_path}")
                     except tf.errors.OutOfRangeError:
                         break
+                # ipdb.set_trace()
                 logging.info(
                     "################################################################################################")
                 logging.info(f"Finished Epoch {epoch}")
@@ -396,4 +398,4 @@ class RunModel(object):
         data_list = padding_function(data_list)
         data_list = self.replace_by_word_embeddings(data_list)
         # ipdb.set_trace()
-        return self.sess.run(tf.argmax(self.test_output, 1), feed_dict={self.test_val: [data_list]})
+        return self.sess.run(self.test_output, feed_dict={self.test_val: [data_list]})
