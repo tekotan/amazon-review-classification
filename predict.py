@@ -20,7 +20,7 @@ train = my_model.RunModel(network, params, predict=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("msg")
+    parser.add_argument("-r", "--review", type=str)
     args = parser.parse_args()
     ipdb.set_trace()
-    print(train.predict(args.msg))
+    print(train.predict(args.review))
