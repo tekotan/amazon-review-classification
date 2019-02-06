@@ -126,6 +126,8 @@ class BaseModel(object):
             (split[0] // split[1]) * epochs)
         self.val_dataset = self.val_dataset.batch(batch_size)
 
+        self.val_dataset_total = tf.data.TFRecordDataset(
+            [f"val_data/val_{i}.tfrecord" for i in range(split[1])])
         self.val_dataset_total = self.val_dataset_total.map(extract_fn)
         self.val_dataset_total = self.val_dataset_total.repeat(
             (split[0] // split[1]) * epochs)
