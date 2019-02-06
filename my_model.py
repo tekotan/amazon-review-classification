@@ -250,7 +250,7 @@ class LSTMModel(BaseModel):
         self.optimizer = tf.train.AdamOptimizer(
             learning_rate=params.learning_rate).minimize(self.loss)
         self.accuracy = tf.reduce_mean(tf.cast(tf.equal(
-            tf.argmax(data_y, 1), tf.argmax(self.predictions, 1)), tf.float32))
+            tf.argmax(data_y, 1), self.predictions), tf.float32))
         tf.summary.scalar('accuracy', self.accuracy)
         self.merged = tf.summary.merge_all()
 
@@ -279,9 +279,9 @@ class LSTMModel(BaseModel):
         bias = tf.Variable(tf.constant(
             0.1, shape=[params.output_classes]), name='bias')
         self.logits = tf.matmul(dense, weight) + bias
-        self.predictions = tf.nn.softmax(tf.matmul(dense, weight) + bias)
+        self.predictions = tf.argmax(self.logits, axis=1)
         if predict:
-            return tf.nn.softmax(tf.matmul(dense, weight) + bias)
+            return tf.argmax(self.logits, axis=1)
 
 
 class Params(object):
