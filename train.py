@@ -1,7 +1,34 @@
 import my_model
-conv_params = my_model.Params(learning_rate=0.01, filter_sizes=[
-    2, 3, 4], dropout_keep_prob=1, report_step=10, total_iterations=100, batch_size=32, num_filters=1)
-train_model = my_model.TrainModel
-Model = my_model.ConvNetModel(conv_params)
+import argparse
 
-train_model.train(Model, con_params)
+
+def train_model(model):
+    params = my_model.Params(
+        batch_size=128,
+        dropout_keep_prob=1,
+        learning_rate=0.01,
+        report_step=5,
+        save_step=100,
+        num_epochs=2,
+        lstmUnits=[1],
+        fc_layer_units=[6],
+        output_classes=6,
+    )
+    if model == "RNN":
+        network = my_model.LSTMModel(params)
+
+        model_op = my_model.RunModel(network, params)
+        model_op.train()
+    elif model == "CNN":
+        network = my_model.ConvNetModel(params)
+
+        model_op = my_model.RunModel(network, params)
+        model_op.train()
+
+
+if __name__ == "__main__":
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("model")
+    # args = parser.parse_args()
+    train_model("RNN")
+    # train_model("CNN")
