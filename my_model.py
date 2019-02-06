@@ -12,6 +12,7 @@ import os
 import logging
 import random
 
+from gensim.models.wrappers import FastText
 import data_precessing as Data
 max_word_count = 40
 data_split = [0.9, 0.05, 0.05]
@@ -23,8 +24,7 @@ class DataClass(object):
         self.data_path = "./complete.json.gz"
         self.data_split = data_split
         print("Loading Vectors")
-        self.vec_model = gensim.models.KeyedVectors.load_word2vec_format(
-            "vectors/wiki-news-300d-1M.vec")
+        self.vec_model = FastText.load_fasttext_format('cc.en.300.bin').wv
         print("Completed Loading Vectors")
 
     def replace_by_word_embeddings(self, row):
@@ -250,7 +250,7 @@ class LSTMModel(BaseModel):
         self.optimizer = tf.train.AdamOptimizer(
             learning_rate=params.learning_rate).minimize(self.loss)
         self.accuracy = tf.reduce_mean(tf.cast(tf.equal(
-            tf.argmax(data_y, 1), tf.argmax(self.predictions, 1)), tf.float32))
+            tf.argmax(data_y, 1), self.predictions), tf.float32))
         tf.summary.scalar('accuracy', self.accuracy)
         self.merged = tf.summary.merge_all()
 
@@ -279,9 +279,9 @@ class LSTMModel(BaseModel):
         bias = tf.Variable(tf.constant(
             0.1, shape=[params.output_classes]), name='bias')
         self.logits = tf.matmul(dense, weight) + bias
-        self.predictions = tf.nn.softmax(tf.matmul(dense, weight) + bias)
+        self.predictions = tf.argmax(self.logits, axis=1)
         if predict:
-            return tf.nn.softmax(tf.matmul(dense, weight) + bias)
+            return tf.argmax(self.logits, axis=1)
 
 
 class Params(object):
@@ -297,8 +297,8 @@ class RunModel(object):
         self.Model = Model
         self.params = params
         if predict:
-            self.vec_model = gensim.models.KeyedVectors.load_word2vec_format(
-                "vectors/wiki-news-300d-1M.vec")
+            self.vec_model = FastText.load_fasttext_format(
+                'cc.en.300.bin').wv
             # self.vec_model = []
             self.test_val = tf.placeholder(
                 tf.float32, shape=(None, max_word_count, 300))
