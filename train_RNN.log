@@ -1,12 +1,6 @@
-INFO:root:Iteration: 0, Loss: 1.7917594909667969, Accuracy: 0.0, Validation Accuracy: 0.625, Validation Loss: 1.7826206684112549
+INFO:root:Iteration: 0, Loss: 1.7978054285049438, Accuracy: 0.01171875, Validation Accuracy: 0.52734375, Validation Loss: 1.7824033498764038
 INFO:root:Saved Checkpoint at iteration 0 and path ./tensorboard_RNN/model0.ckpt
-INFO:root:Iteration: 5, Loss: 1.74116849899292, Accuracy: 0.6953125, Validation Accuracy: 0.625, Validation Loss: 1.7398853302001953
-INFO:root:################################################################################################
-INFO:root:Finished Epoch 0
-INFO:root:Validation Accuracy: 0.6200000047683716, Validation Loss: 1.7239351272583008
-INFO:root:Iteration: 0, Loss: 1.7212309837341309, Accuracy: 0.6171875, Validation Accuracy: 0.6015625, Validation Loss: 1.719183325767517
+INFO:root:Iteration: 100, Loss: 1.2466306686401367, Accuracy: 0.58984375, Validation Accuracy: 0.60546875, Validation Loss: 1.160536766052246
 INFO:root:Saved Checkpoint at iteration 0 and path ./tensorboard_RNN/model0.ckpt
-INFO:root:################################################################################################
-INFO:root:Finished Epoch 1
-INFO:root:Validation Accuracy: 0.6200000047683716, Validation Loss: 1.6917349100112915
-INFO:root:Saved Checkpoint at iteration 4 and path ./tensorboard_RNN/model4.ckpt
+INFO:root:Iteration: 200, Loss: 1.233729362487793, Accuracy: 0.56640625, Validation Accuracy: 0.6640625, Validation Loss: 1.0501477718353271
+INFO:root:Saved Checkpoint at iteration 0 and path ./tensorboard_RNN/model0.ckpt

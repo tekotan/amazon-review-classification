@@ -15,7 +15,7 @@ import random
 from gensim.models.wrappers import FastText
 import data_precessing as Data
 max_word_count = 40
-data_split = [0.9, 0.05, 0.05]
+data_split = [0.8, 0.1, 0.1]
 
 
 class DataClass(object):
@@ -75,7 +75,6 @@ class DataClass(object):
             data_df["reviewText"] = data_df["reviewText"].apply(
                 padding_function)
             # ipdb.set_trace()
-            self.vec_model = {}
 
             data_df["reviewText"] = data_df["reviewText"].apply(
                 self.replace_by_word_embeddings)
@@ -285,7 +284,7 @@ class LSTMModel(BaseModel):
         self.logits = tf.matmul(dense, weight) + bias
         self.predictions = tf.argmax(self.logits, axis=1)
         if predict:
-            return tf.argmax(self.logits, axis=1)
+            return self.logits
 
 
 class Params(object):
