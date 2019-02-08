@@ -375,7 +375,7 @@ class RunModel(object):
             else:
                 row = row[:max_word_count]
             return row
-        ipdb.set_trace()
+        # ipdb.set_trace()
         data_list = padding_function(data_list)
         data_list = self.replace_by_word_embeddings(data_list)
         data_list = data_list.reshape((1, 300, 40))
@@ -478,7 +478,7 @@ class RunModel(object):
                 new_arr[w] = self.vec_model[word]
             except Exception as e:
                 if w == 300:
-                    ipdb.set_trace()
+                    # ipdb.set_trace()
                 new_arr[w] = np.zeros((300))
         return new_arr.astype(np.float32)
 
