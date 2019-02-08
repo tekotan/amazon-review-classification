@@ -1,7 +1,7 @@
 *.pyc
-**/test_data
-**/train_data
-**/val_data
+**/test_data*
+**/train_data*
+**/val_data*
 complete.json.gz
 **/__pycache__
 **/vectors

@@ -12,6 +12,7 @@ import os
 import logging
 import random
 
+
 from gensim.models.wrappers import FastText
 import data_precessing as Data
 max_word_count = 40
@@ -26,6 +27,7 @@ class DataClass(object):
         print("Loading Vectors")
         self.vec_model = FastText.load_fasttext_format(
             'vectors/cc.en.300.bin/cc.en.300.bin').wv
+        # self.vec_model = {}
         print("Completed Loading Vectors")
 
     def replace_by_word_embeddings(self, row):
@@ -38,59 +40,96 @@ class DataClass(object):
                 new_arr[w] = np.zeros((300))
         return new_arr.astype(np.float32)
 
-    def get_data_as_df(self, file, start_examples, stop_examples):
+    def get_data_as_df(self, file):  # , start_examples, stop_examples):
+        # def parse(path):
+        #     g = gzip.open(path, 'rb')
+        #     for l in tqdm(g):
+        #         yield eval(l)
         def parse(path):
             g = gzip.open(path, 'rb')
             for l in tqdm(g):
-                yield eval(l)
+                data_df = pd.DataFrame.from_dict(
+                    {0: eval(l)}, orient='index', dtype=np.float32)
+                # print(data_df.columns)
+                data_df = data_df[["reviewText", "overall"]]
+                data_df["reviewText"] = data_df["reviewText"].str.lower()
+                data_df["reviewText"] = data_df["reviewText"].str.strip(
+                    to_strip=".!?,")
+                data_df["reviewText"] = data_df["reviewText"].str.split()
 
-        def getDF(path):
-            i = 0
-            counter = 0
-            df = {}
-            for d in tqdm(parse(path)):
-                if counter > start_examples:
-                    df[i] = d
-                    i += 1
-                if counter > stop_examples:
-                    break
-                else:
-                    counter += 1
-            data_df = pd.DataFrame.from_dict(
-                df, orient='index', dtype=np.float32)
-            print(data_df.columns)
-            data_df = data_df[["reviewText", "overall"]]
-            data_df["reviewText"] = data_df["reviewText"].str.lower()
-            data_df["reviewText"] = data_df["reviewText"].str.strip(
-                to_strip=".!?,")
-            data_df["reviewText"] = data_df["reviewText"].str.split()
-
-            def padding_function(row):
+                def padding_function(row):
+                    # ipdb.set_trace()
+                    if len(row) < max_word_count:
+                        row += ["" for i in range(max_word_count - len(row))]
+                    else:
+                        row = row[:max_word_count]
+                    return row
+                data_df["reviewText"] = data_df["reviewText"].apply(
+                    padding_function)
                 # ipdb.set_trace()
-                if len(row) < max_word_count:
-                    row += ["" for i in range(max_word_count - len(row))]
-                else:
-                    row = row[:max_word_count]
-                return row
-            data_df["reviewText"] = data_df["reviewText"].apply(
-                padding_function)
-            # ipdb.set_trace()
 
-            data_df["reviewText"] = data_df["reviewText"].apply(
-                self.replace_by_word_embeddings)
-            # for i in range(max_word_count):
-            #     ipdb.set_trace()
-            #     temp_dict = {}
-            #     temp_dict[str(i)] = data_df["reviewText"]
-            #     data_df = data_df.assign(**temp_dict)
-            # data_df.drop(["reviewText"])
+                data_df["reviewText"] = data_df["reviewText"].apply(
+                    self.replace_by_word_embeddings)
+                for i in range(300):
+                    # ipdb.set_trace()
+                    temp_dict = {}
+                    temp_dict[str(i)] = [data_df["reviewText"][0][:, i]]
+                    data_df = data_df.assign(**temp_dict)
+                # ipdb.set_trace()
+                # data_df.drop(["reviewText"])
 
-            # ipdb.set_trace()
-            # data_df["reviewText"] = pd.to_numeric(data_df["reviewText"])
-            # data_df["overall"] = pd.to_numeric(data_df["overall"])
+                # data_df["reviewText"] = pd.to_numeric(data_df["reviewText"])
+                data_df["overall"] = pd.to_numeric(data_df["overall"])
+                yield data_df
 
-            return data_df
-        return getDF(file)
+        # def getDF(path):
+        #     i = 0
+        #     counter = 0
+        #     # df = {}
+        #     # for d in tqdm(parse(path)):
+        #     #     if counter > start_examples:
+        #     #         df[i] = d
+        #     #         i += 1
+        #     #     if counter > stop_examples:
+        #     #         break
+        #     #     else:
+        #     #         counter += 1
+        #     gen_data = parse(path)
+        #     data_df = pd.DataFrame.from_dict(
+        #         {0: next(gen_data)}, orient='index', dtype=np.float32)
+        #     # print(data_df.columns)
+        #     data_df = data_df[["reviewText", "overall"]]
+        #     data_df["reviewText"] = data_df["reviewText"].str.lower()
+        #     data_df["reviewText"] = data_df["reviewText"].str.strip(
+        #         to_strip=".!?,")
+        #     data_df["reviewText"] = data_df["reviewText"].str.split()
+        #
+        #     def padding_function(row):
+        #         # ipdb.set_trace()
+        #         if len(row) < max_word_count:
+        #             row += ["" for i in range(max_word_count - len(row))]
+        #         else:
+        #             row = row[:max_word_count]
+        #         return row
+        #     data_df["reviewText"] = data_df["reviewText"].apply(
+        #         padding_function)
+        #     # ipdb.set_trace()
+        #
+        #     data_df["reviewText"] = data_df["reviewText"].apply(
+        #         self.replace_by_word_embeddings)
+        #     for i in range(max_word_count):
+        #         ipdb.set_trace()
+        #         temp_dict = {}
+        #         temp_dict[str(i)] = data_df["reviewText"]
+        #         data_df = data_df.assign(**temp_dict)
+        #     data_df.drop(["reviewText"])
+        #
+        #     ipdb.set_trace()
+        #     data_df["reviewText"] = pd.to_numeric(data_df["reviewText"])
+        #     data_df["overall"] = pd.to_numeric(data_df["overall"])
+        #
+        #     return data_df
+        return parse(file)
 
 
 class BaseModel(object):
@@ -105,39 +144,41 @@ class BaseModel(object):
 
         def extract_fn(data_record):
             feature_dict = {}
-            for i in range(max_word_count):
+            for i in range(300):
                 feature_dict[str(i)] = tf.FixedLenFeature(
-                    [300], tf.float32)
+                    [max_word_count], tf.float32)
             feature_dict["overall"] = tf.FixedLenFeature([1], tf.float32)
             sample = tf.parse_single_example(data_record, feature_dict)
             return sample
         self.train_dataset = tf.data.TFRecordDataset(
-            [f"train_data/train_{i}.tfrecord" for i in range(split[0])])
+            [f"train_data/train_{i}.tfrecord" for i in range(0, split[0])])
         self.train_dataset = self.train_dataset.shuffle(split[0] // 30)
         self.train_dataset = self.train_dataset.map(extract_fn)
-        self.train_dataset = self.train_dataset.repeat(epochs)
+        self.train_dataset = self.train_dataset.repeat(epochs * batch_size)
         self.train_dataset = self.train_dataset.batch(batch_size)
 
         self.val_dataset = tf.data.TFRecordDataset(
-            [f"val_data/val_{i}.tfrecord" for i in range(split[1])])
+            [f"val_data/val_{i}.tfrecord" for i in range(0, split[1] - 1)])
         # self.val_dataset = self.val_dataset.shuffle(split[1] // 30)
         self.val_dataset = self.val_dataset.map(extract_fn)
         self.val_dataset = self.val_dataset.repeat(
-            (split[0] // split[1]) * epochs)
+            (split[0] // split[1]) * epochs * batch_size)
         self.val_dataset = self.val_dataset.batch(batch_size)
 
         self.val_dataset_total = tf.data.TFRecordDataset(
-            [f"val_data/val_{i}.tfrecord" for i in range(split[1])])
+            [f"val_data/val_{i}.tfrecord" for i in range(0, split[1] - 1)])
         self.val_dataset_total = self.val_dataset_total.map(extract_fn)
         self.val_dataset_total = self.val_dataset_total.repeat(
-            (split[0] // split[1]) * epochs)
+            (split[0] // split[1]) * epochs * batch_size)
         self.val_dataset_total = self.val_dataset_total.batch(
             len(os.listdir("val_data/")))
 
         self.test_dataset = tf.data.TFRecordDataset(
-            [f"test_data/test_{i}.tfrecord" for i in range(split[2])])
+            [f"test_data/test_{i}.tfrecord" for i in range(split[2] - 1)])
         self.test_dataset = self.test_dataset.map(extract_fn)
-        self.test_dataset = self.test_dataset.batch(batch_size)
+        self.val_dataset = self.val_dataset.repeat(
+            (split[0] // split[2]) * epochs * batch_size)
+        self.test_dataset = self.test_dataset.batch(5)
 
         self.handle = tf.placeholder(tf.string, shape=[])
 
@@ -250,8 +291,11 @@ class LSTMModel(BaseModel):
         self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=data_y,
                                                                               logits=self.logits))
         tf.summary.scalar("loss", self.loss)
-        self.optimizer = tf.train.AdamOptimizer(
-            learning_rate=params.learning_rate).minimize(self.loss)
+        self._optimizer = tf.train.AdamOptimizer(
+            learning_rate=params.learning_rate)
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(update_ops):
+            self.optimizer = self._optimizer.minimize(self.loss)
         self.accuracy = tf.reduce_mean(tf.cast(tf.equal(
             tf.argmax(data_y, 1), self.predictions), tf.float32))
         tf.summary.scalar('accuracy', self.accuracy)
@@ -260,9 +304,11 @@ class LSTMModel(BaseModel):
     def build_model(self, data_x, params, predict):
         # ipdb.set_trace()
         data_x = tf.reshape(data_x, (-1, max_word_count, 300))
+        data_x = tf.layers.batch_normalization(data_x, training=(not predict))
 
         def create_lstm_cell(units):
-            lstmCell = tf.nn.rnn_cell.LSTMCell(units)
+            lstmCell = tf.nn.rnn_cell.LSTMCell(
+                units, initializer=tf.contrib.layers.xavier_initializer(), activation=tf.nn.leaky_relu)
             lstmCell = tf.nn.rnn_cell.DropoutWrapper(
                 cell=lstmCell, output_keep_prob=params.dropout_keep_prob)
             return lstmCell
@@ -274,7 +320,7 @@ class LSTMModel(BaseModel):
         value = tf.transpose(value, [1, 0, 2])
         dense = tf.gather(value, int(value.get_shape()[0]) - 1)
         for layer in params.fc_layer_units:
-            dense = tf.layers.dense(inputs=dense, units=layer, activation=tf.nn.relu,
+            dense = tf.layers.dense(inputs=dense, units=layer, activation=tf.nn.leaky_relu,
                                     kernel_initializer=tf.contrib.layers.xavier_initializer(),)
 
         weight = tf.Variable(tf.truncated_normal(
@@ -308,8 +354,8 @@ class RunModel(object):
             self.test_output = self.Model.build_model(
                 self.test_val, self.params, predict=True)
             self.sess = tf.InteractiveSession()
-            saver = tf.train.Saver()
-            saver.restore(self.sess, tf.train.latest_checkpoint(
+            self.saver = tf.train.Saver()
+            self.saver.restore(self.sess, tf.train.latest_checkpoint(
                 f"tensorboard_{self.Model.type}"))
             self.sess.run(tf.global_variables_initializer())
             self.sess.run(tf.local_variables_initializer())
@@ -349,15 +395,19 @@ class RunModel(object):
                                 self.Model.handle: train_handle})
                             train_writer.add_summary(
                                 summary, iteration * epoch)
+                            print_val = sess.run(self.Model.predictions, feed_dict={
+                                self.Model.handle: test_handle})
                             logging.info(
-                                f"Iteration: {iteration*(epoch+1)}, Loss: {loss}, Accuracy: {accuracy}, Validation Accuracy: {validation_acc}, Validation Loss: {validation_loss}")
-                        if iteration % self.params.save_step == 0:
+                                f"Iteration: {iteration*(epoch+1)}, Loss: {loss}, Accuracy: {accuracy}, Validation Accuracy: {validation_acc}, Validation Loss: {validation_loss}, Test: {print_val}")
+                        if iteration % self.params.save_step == 0 and iteration > 0:
                             save_path = saver.save(
-                                sess, f"./tensorboard_{self.Model.type}/model{iteration*epoch}.ckpt")
+                                sess, f"./tensorboard_{self.Model.type}/model{iteration*(epoch+1)}.ckpt")
                             logging.info(
-                                f"Saved Checkpoint at iteration {iteration*epoch} and path {save_path}")
+                                f"Saved Checkpoint at iteration {iteration*(epoch+1)} and path {save_path}")
                     except tf.errors.OutOfRangeError:
-                        break
+                        saver.save(
+                            sess, f"./tensorboard_{self.Model.type}/model{iteration*(epoch+1)}.ckpt")
+                        sys.exit()
                 # ipdb.set_trace()
                 logging.info(
                     "################################################################################################")
