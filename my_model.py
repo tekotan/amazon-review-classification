@@ -477,8 +477,6 @@ class RunModel(object):
             try:
                 new_arr[w] = self.vec_model[word]
             except Exception as e:
-                if w == 300:
-                    # ipdb.set_trace()
                 new_arr[w] = np.zeros((300))
         return new_arr.astype(np.float32)
 
