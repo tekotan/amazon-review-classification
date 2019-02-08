@@ -151,34 +151,34 @@ class BaseModel(object):
             sample = tf.parse_single_example(data_record, feature_dict)
             return sample
         self.train_dataset = tf.data.TFRecordDataset(
-            [f"train_data/train_{i}.tfrecord" for i in range(0, split[0])])
+            [f"train_data/train_{i}.tfrecord" for i in range(0, 2500)])  # split[0])])
         self.train_dataset = self.train_dataset.shuffle(split[0] // 30)
         self.train_dataset = self.train_dataset.map(extract_fn)
         self.train_dataset = self.train_dataset.repeat(epochs * batch_size)
         self.train_dataset = self.train_dataset.batch(batch_size)
 
-        self.val_dataset = tf.data.TFRecordDataset(
-            [f"val_data/val_{i}.tfrecord" for i in range(0, split[1] - 1)])
-        # self.val_dataset = self.val_dataset.shuffle(split[1] // 30)
-        self.val_dataset = self.val_dataset.map(extract_fn)
-        self.val_dataset = self.val_dataset.repeat(
-            (split[0] // split[1]) * epochs * batch_size)
-        self.val_dataset = self.val_dataset.batch(batch_size)
-
-        self.val_dataset_total = tf.data.TFRecordDataset(
-            [f"val_data/val_{i}.tfrecord" for i in range(0, split[1] - 1)])
-        self.val_dataset_total = self.val_dataset_total.map(extract_fn)
-        self.val_dataset_total = self.val_dataset_total.repeat(
-            (split[0] // split[1]) * epochs * batch_size)
-        self.val_dataset_total = self.val_dataset_total.batch(
-            len(os.listdir("val_data/")))
-
-        self.test_dataset = tf.data.TFRecordDataset(
-            [f"test_data/test_{i}.tfrecord" for i in range(split[2] - 1)])
-        self.test_dataset = self.test_dataset.map(extract_fn)
-        self.val_dataset = self.val_dataset.repeat(
-            (split[0] // split[2]) * epochs * batch_size)
-        self.test_dataset = self.test_dataset.batch(5)
+        # self.val_dataset = tf.data.TFRecordDataset(
+        #     [f"val_data/val_{i}.tfrecord" for i in range(0, split[1] - 1)])
+        # # self.val_dataset = self.val_dataset.shuffle(split[1] // 30)
+        # self.val_dataset = self.val_dataset.map(extract_fn)
+        # self.val_dataset = self.val_dataset.repeat(
+        #     (split[0] // split[1]) * epochs * batch_size)
+        # self.val_dataset = self.val_dataset.batch(batch_size)
+        #
+        # self.val_dataset_total = tf.data.TFRecordDataset(
+        #     [f"val_data/val_{i}.tfrecord" for i in range(0, split[1] - 1)])
+        # self.val_dataset_total = self.val_dataset_total.map(extract_fn)
+        # self.val_dataset_total = self.val_dataset_total.repeat(
+        #     (split[0] // split[1]) * epochs * batch_size)
+        # self.val_dataset_total = self.val_dataset_total.batch(
+        #     len(os.listdir("val_data/")))
+        #
+        # self.test_dataset = tf.data.TFRecordDataset(
+        #     [f"test_data/test_{i}.tfrecord" for i in range(split[2] - 1)])
+        # self.test_dataset = self.test_dataset.map(extract_fn)
+        # self.val_dataset = self.val_dataset.repeat(
+        #     (split[0] // split[2]) * epochs * batch_size)
+        # self.test_dataset = self.test_dataset.batch(5)
 
         self.handle = tf.placeholder(tf.string, shape=[])
 
@@ -307,10 +307,8 @@ class LSTMModel(BaseModel):
         data_x = tf.layers.batch_normalization(data_x, training=(not predict))
 
         def create_lstm_cell(units):
-            lstmCell = tf.nn.rnn_cell.LSTMCell(
-                units, initializer=tf.contrib.layers.xavier_initializer(), activation=tf.nn.leaky_relu)
-            lstmCell = tf.nn.rnn_cell.DropoutWrapper(
-                cell=lstmCell, output_keep_prob=params.dropout_keep_prob)
+            lstmCell = tf.contrib.rnn.LayerNormBasicLSTMCell(
+                units, activation=tf.nn.leaky_relu, dropout_keep_prob=params.dropout_keep_prob)
             return lstmCell
         cell = tf.nn.rnn_cell.MultiRNNCell(
             [create_lstm_cell(num_units) for num_units in params.lstmUnits])
@@ -319,15 +317,22 @@ class LSTMModel(BaseModel):
 
         value = tf.transpose(value, [1, 0, 2])
         dense = tf.gather(value, int(value.get_shape()[0]) - 1)
+        # dense = tf.layers.batch_normalization(
+        #     dense, training=(not predict))
         for layer in params.fc_layer_units:
             dense = tf.layers.dense(inputs=dense, units=layer, activation=tf.nn.leaky_relu,
                                     kernel_initializer=tf.contrib.layers.xavier_initializer(),)
+            dense = tf.nn.dropout(dense, keep_prob=params.dropout_keep_prob)
+        # dense = tf.layers.batch_normalization(
+        #     dense, training=(not predict))
+        self.logits = tf.layers.dense(inputs=dense, units=params.output_classes, activation=tf.nn.leaky_relu,
+                                      kernel_initializer=tf.contrib.layers.xavier_initializer(),)
 
-        weight = tf.Variable(tf.truncated_normal(
-            [params.fc_layer_units[-1], params.output_classes]), name='Weights')
-        bias = tf.Variable(tf.constant(
-            0.1, shape=[params.output_classes]), name='bias')
-        self.logits = tf.matmul(dense, weight) + bias
+        # weight = tf.Variable(tf.truncated_normal(
+        #     [params.fc_layer_units[-1], params.output_classes]), name='Weights')
+        # bias = tf.Variable(tf.constant(
+        #     0.1, shape=[params.output_classes]), name='bias')
+        # self.logits = tf.matmul(dense, weight) + bias
         self.predictions = tf.argmax(self.logits, axis=1)
         if predict:
             return self.logits
@@ -355,10 +360,52 @@ class RunModel(object):
                 self.test_val, self.params, predict=True)
             self.sess = tf.InteractiveSession()
             self.saver = tf.train.Saver()
+            # self.sess.run(tf.global_variables_initializer())
+            # self.sess.run(tf.local_variables_initializer())
             self.saver.restore(self.sess, tf.train.latest_checkpoint(
                 f"tensorboard_{self.Model.type}"))
-            self.sess.run(tf.global_variables_initializer())
-            self.sess.run(tf.local_variables_initializer())
+
+    def predict_during_train(self, data_x):
+        data_list = data_x.lower().strip("!.?,").split()
+
+        def padding_function(row):
+            # ipdb.set_trace()
+            if len(row) < max_word_count:
+                row += ["" for i in range(max_word_count - len(row))]
+            else:
+                row = row[:max_word_count]
+            return row
+        ipdb.set_trace()
+        data_list = padding_function(data_list)
+        data_list = self.replace_by_word_embeddings(data_list)
+        data_list = data_list.reshape((1, 300, 40))
+        data_dict = {"overall": 5.0}
+        for i in range(300):
+            data_dict[str(i)] = data_list[0][i]
+        predict_dataset = tf.data.Dataset.from_tensor_slices(
+            data_dict).batch(1)
+
+        return predict_dataset
+
+    def predict_during_train_iter(self, sess):
+        print("Loading vectors")
+        # self.vec_model = FastText.load_fasttext_format(
+        #     'vectors/cc.en.300.bin/cc.en.300.bin').wv
+        print("Finished Loading Vectors")
+        # ipdb.set_trace()
+        pred_iter1 = self.predict_during_train(
+            "great").make_one_shot_iterator()
+        pred_iter2 = self.predict_during_train(
+            "bad").make_one_shot_iterator()
+
+        pred_handle1 = sess.run(pred_iter1.string_handle())
+        pred_handle2 = sess.run(pred_iter2.string_handle())
+
+        predict_1 = sess.run(self.Model.logits, feed_dict={
+            self.Model.handle: pred_handle1})
+        predict_2 = sess.run(self.Model.logits, feed_dict={
+            self.Model.handle: pred_handle2})
+        print(predict_1, predict_2)
 
     def train(self):
         logging.basicConfig(
@@ -367,38 +414,39 @@ class RunModel(object):
             saver = tf.train.Saver()
             sess.run(tf.global_variables_initializer())
             sess.run(tf.local_variables_initializer())
-            ipdb.set_trace()
+            # ipdb.set_trace()
             if os.path.isdir(f"tensorboard_{self.Model.type}") and tf.train.latest_checkpoint(f"tensorboard_{self.Model.type}"):
                 saver.restore(sess, tf.train.latest_checkpoint(
                     f"tensorboard_{self.Model.type}"))
             train_writer = tf.summary.FileWriter(
                 f"tensorboard_{self.Model.type}", sess.graph)
             train_iterator = self.Model.train_dataset.make_one_shot_iterator()
-            val_iterator = self.Model.val_dataset.make_one_shot_iterator()
-            val_iterator_total = self.Model.val_dataset_total.make_one_shot_iterator()
-
-            test_iterator = self.Model.test_dataset.make_one_shot_iterator()
+            # val_iterator = self.Model.val_dataset.make_one_shot_iterator()
+            # val_iterator_total = self.Model.val_dataset_total.make_one_shot_iterator()
+            #
+            # test_iterator = self.Model.test_dataset.make_one_shot_iterator()
 
             train_handle = sess.run(train_iterator.string_handle())
-            val_handle = sess.run(val_iterator.string_handle())
-            val_handle_total = sess.run(val_iterator_total.string_handle())
-            test_handle = sess.run(test_iterator.string_handle())
+            # val_handle = sess.run(val_iterator.string_handle())
+            # val_handle_total = sess.run(val_iterator_total.string_handle())
+            # test_handle = sess.run(test_iterator.string_handle())
+            # ipdb.set_trace()
             for epoch in range(self.params.num_epochs):
                 for iteration in tqdm(range(len(os.listdir("train_data/")) // self.params.batch_size + 1)):
                     try:
                         accuracy, loss, _ = sess.run(
                             [self.Model.accuracy, self.Model.loss, self.Model.optimizer], feed_dict={self.Model.handle: train_handle})
-                        validation_acc, validation_loss = sess.run([self.Model.accuracy, self.Model.loss], feed_dict={
-                            self.Model.handle: val_handle})
+                        # validation_acc, validation_loss = sess.run([self.Model.accuracy, self.Model.loss], feed_dict={
+                        #     self.Model.handle: val_handle})
                         if iteration % self.params.report_step == 0:
                             summary = sess.run(self.Model.merged, feed_dict={
                                 self.Model.handle: train_handle})
                             train_writer.add_summary(
                                 summary, iteration * epoch)
-                            print_val = sess.run(self.Model.predictions, feed_dict={
-                                self.Model.handle: test_handle})
+                            # print_val = sess.run(self.Model.predictions, feed_dict={
+                            #     self.Model.handle: test_handle})
                             logging.info(
-                                f"Iteration: {iteration*(epoch+1)}, Loss: {loss}, Accuracy: {accuracy}, Validation Accuracy: {validation_acc}, Validation Loss: {validation_loss}, Test: {print_val}")
+                                f"Iteration: {iteration*(epoch+1)}, Loss: {loss}, Accuracy: {accuracy},")  # Validation Accuracy: {validation_acc}, Validation Loss: {validation_loss}, Test: {print_val}")
                         if iteration % self.params.save_step == 0 and iteration > 0:
                             save_path = saver.save(
                                 sess, f"./tensorboard_{self.Model.type}/model{iteration*(epoch+1)}.ckpt")
@@ -412,11 +460,11 @@ class RunModel(object):
                 logging.info(
                     "################################################################################################")
                 logging.info(f"Finished Epoch {epoch}")
-                validation_acc, validation_loss = sess.run([self.Model.accuracy, self.Model.loss], feed_dict={
-                    self.Model.handle: val_handle_total})
-                logging.info(
-                    f"Validation Accuracy: {validation_acc}, Validation Loss: {validation_loss}")
-
+                # validation_acc, validation_loss = sess.run([self.Model.accuracy, self.Model.loss], feed_dict={
+                #     self.Model.handle: val_handle_total})
+                # logging.info(
+                #     f"Validation Accuracy: {validation_acc}, Validation Loss: {validation_loss}")
+            # self.predict_during_train_iter(sess)
             save_path = saver.save(
                 sess, f"./tensorboard_{self.Model.type}/model{iteration*epoch}.ckpt")
             logging.info(
