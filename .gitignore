@@ -6,3 +6,4 @@ complete.json.gz
 **/__pycache__
 **/vectors
 **/tensorboard*
+data.csv
